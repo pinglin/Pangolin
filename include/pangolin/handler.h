@@ -108,6 +108,26 @@ struct HandlerScroll : Handler
     void Special(View&, InputSpecial inType, float x, float y, float p1, float p2, float p3, float p4, int button_state);
 };
 
+struct Handler2D : Handler
+{
+
+    Handler2D() : in_view(false), pressed(false){}
+
+    void Keyboard(View&, unsigned char key, int x, int y, bool pressed);
+    void Mouse(View&, MouseButton button, int x, int y, bool pressed, int button_state);
+    void MouseMotion(View&, int x, int y, int button_state);
+
+    bool IsInsideView() const { return in_view; }
+    bool IsPressed() const { return pressed; }
+    GLint const* GetLastPos() const { return last_pos; }
+
+protected:
+    MouseButton button;
+    bool pressed;
+    bool in_view;
+    GLint last_pos[2];
+};
+
 struct Handler3D : Handler
 {
     
