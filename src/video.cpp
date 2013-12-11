@@ -302,7 +302,7 @@ VideoInterface* OpenVideo(std::string str_uri)
         dc1394framerate_t framerate = get_firewire_framerate(desired_fps);
         dc1394speed_t iso_speed = (dc1394speed_t)(log(desired_iso/100) / log(2));
         int dma_buffers = desired_dma;
-        
+
         if( boost::algorithm::starts_with(desired_format, "FORMAT7") )
         {
             dc1394video_mode_t video_mode = get_firewire_format7_mode(desired_format);

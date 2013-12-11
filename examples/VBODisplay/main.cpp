@@ -32,6 +32,12 @@ int main( int /*argc*/, char* argv[] )
 
   pangolin::CreateWindowAndBind("Main",640,480);
   glewInit();
+
+  printf("Vendor: %s\n", glGetString (GL_VENDOR));
+  printf("Renderer: %s\n", glGetString (GL_RENDERER));
+  printf("OpenGL Version: %s\n", glGetString (GL_VERSION));
+  printf("GLSL: %s\n", glGetString (GL_SHADING_LANGUAGE_VERSION));
+
   
   // 3D Mouse handler requires depth testing to be enabled  
   glEnable(GL_DEPTH_TEST);  
@@ -93,9 +99,6 @@ int main( int /*argc*/, char* argv[] )
       time += delta;
     }
 
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-
     vertex_array.Bind();
     glVertexPointer(4, GL_FLOAT, 0, 0);
     vertex_array.Unbind();
@@ -103,6 +106,9 @@ int main( int /*argc*/, char* argv[] )
     colour_array.Bind();
     glColorPointer(4, GL_UNSIGNED_BYTE, 0, 0);
     colour_array.Unbind();
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
 
     glDrawArrays(GL_POINTS, 0, mesh_width * mesh_height);
 
@@ -114,7 +120,7 @@ int main( int /*argc*/, char* argv[] )
     {
 #ifdef USE_CUTIL
       fps = 1000.0 / cutGetAverageTimerValue(timer);
-      cutResetTimer(timer);
+      cutResetTimer(tim er);
 #endif
     }
 

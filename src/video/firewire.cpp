@@ -117,6 +117,17 @@ void FirewireVideo::init_format7_camera(
     if (!camera)
         throw VideoException("Failed to initialize camera");
     
+    dc1394video_modes_t video_modes;
+    dc1394_video_get_supported_modes(camera, &video_modes);
+
+    bool format7_supported = false;
+    for(int i = 0; i < video_modes.num; ++i)
+        if(video_modes.modes[i] >= DC1394_VIDEO_MODE_FORMAT7_0 && video_modes.modes[i] <= DC1394_VIDEO_MODE_FORMAT7_7)
+            format7_supported = true;
+
+    if(!format7_supported)
+        throw VideoException("Device doesn't support format7.");
+
     // Attempt to stop camera if it is already running
     dc1394switch_t is_iso_on = DC1394_OFF;
     dc1394_video_get_transmission(camera, &is_iso_on);
@@ -144,10 +155,10 @@ void FirewireVideo::init_format7_camera(
     err=dc1394_video_set_iso_speed(camera, iso_speed);
     if( err != DC1394_SUCCESS )
         throw VideoException("Could not set iso speed");
-    
+
     // check that the required mode is actually supported
     dc1394format7mode_t format7_info;
-    
+
     err = dc1394_format7_get_mode_info(camera, video_mode, &format7_info);
     if( err != DC1394_SUCCESS )
         throw VideoException("Could not get format7 mode info");
@@ -196,7 +207,7 @@ void FirewireVideo::init_format7_camera(
     //-----------------------------------------------------------------------
     //  setup frame rate
     //-----------------------------------------------------------------------
-    
+
     err=dc1394_format7_set_packet_size(camera,video_mode, format7_info.max_packet_size);
     if( err != DC1394_SUCCESS )
         throw VideoException("Could not set format7 packet size");

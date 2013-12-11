@@ -43,7 +43,7 @@ void VideoSample(const std::string uri)
 
         // Activate video viewport and render texture
         vVideo.Activate();
-        texVideo.RenderToViewportFlipY();        
+        texVideo.RenderToViewportFlipY();
 
         // Swap back buffer with front and process window events via GLUT
         pangolin::FinishFrame();
@@ -68,7 +68,7 @@ int main( int argc, char* argv[] )
         const string uri = std::string(argv[1]);
         VideoSample(uri);
     }else{
-        cout << "Usage  : SimpleRecord [video-uri]" << endl << endl;
+        cout << "Usage  : SimpleVideo [video-uri]" << endl << endl;
         cout << "Where video-uri describes a stream or file resource, e.g." << endl;
         cout << "\tfile:[realtime=1]///home/user/video/movie.pvn" << endl;
         cout << "\tfile:///home/user/video/movie.avi" << endl;
