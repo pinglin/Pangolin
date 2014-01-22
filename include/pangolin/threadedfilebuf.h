@@ -32,9 +32,9 @@
 #include <streambuf>
 #include <fstream>
 
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
+#include <pangolin/compat/thread.h>
+#include <pangolin/compat/mutex.h>
+#include <pangolin/compat/condition_variable.h>
 
 namespace pangolin
 {
@@ -58,10 +58,12 @@ protected:
     int mem_start;
     int mem_end;
     
-    boost::mutex update_mutex;
-    boost::condition_variable cond_queued;
-    boost::condition_variable cond_dequeued;
-    boost::thread write_thread;
+    boostd::mutex update_mutex;
+    boostd::condition_variable cond_queued;
+    boostd::condition_variable cond_dequeued;
+    boostd::thread write_thread;
+
+    bool should_run;
 };
 
 }

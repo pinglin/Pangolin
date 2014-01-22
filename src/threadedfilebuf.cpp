@@ -42,16 +42,16 @@ threadedfilebuf::threadedfilebuf( const std::string& filename, unsigned int buff
     mem_max_size = buffer_size_bytes;
     mem_buffer = new char[mem_max_size];
     
-    write_thread = boost::thread(boost::ref(*this));
+    should_run = true;
+    write_thread = boostd::thread(boostd::ref(*this));
 }
 
 threadedfilebuf::~threadedfilebuf()
 {
-    if( write_thread.joinable() )
-    {
-        write_thread.interrupt();
-        write_thread.join();
-    }
+    should_run = false;
+    cond_queued.notify_all();
+
+    write_thread.join();
     
     if( mem_buffer) delete mem_buffer;
     file.close();
@@ -63,7 +63,7 @@ std::streamsize threadedfilebuf::xsputn(const char* data, std::streamsize num_by
         throw exception();
     
     {
-        boost::unique_lock<boost::mutex> lock(update_mutex);
+        boostd::unique_lock<boostd::mutex> lock(update_mutex);
         
         // wait until there is space to write into buffer
         while( mem_size + num_bytes > mem_max_size ) {
@@ -104,11 +104,13 @@ void threadedfilebuf::operator()()
     while(true)
     {
         {
-            boost::unique_lock<boost::mutex> lock(update_mutex);
+            boostd::unique_lock<boostd::mutex> lock(update_mutex);
             
-            while( mem_size == 0 )
+            while( mem_size == 0 ) {
+                if(!should_run) return;
                 cond_queued.wait(lock);
-            
+            }
+
             data_to_write =
                     (mem_start < mem_end) ?
                         mem_end - mem_start :
@@ -122,7 +124,7 @@ void threadedfilebuf::operator()()
             throw std::exception();
         
         {
-            boost::unique_lock<boost::mutex> lock(update_mutex);
+            boostd::unique_lock<boostd::mutex> lock(update_mutex);
             
             mem_size -= data_to_write;
             mem_start += data_to_write;

@@ -1,7 +1,7 @@
 /* This file is part of the Pangolin Project.
  * http://github.com/stevenlovegrove/Pangolin
  *
- * Copyright (c) 2011 Steven Lovegrove
+ * Copyright (c) 2013 Steven Lovegrove
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -25,48 +25,32 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef PANGOLIN_IMAGE_H
-#define PANGOLIN_IMAGE_H
+#ifndef PANGOLIN_COMPAT_TYPE_TRAITS_H
+#define PANGOLIN_COMPAT_TYPE_TRAITS_H
 
+#include <typeinfo>
+
+#ifdef CPP11_NO_BOOST
+    #include <type_traits>
+#else
+    #include <boost/type_traits.hpp>
+#endif
+
+#include <pangolin/compat/boostd.h>
+
+// enable_if From Boost
 namespace pangolin
 {
+    template <bool B, class T = void>
+    struct enable_if_c {
+      typedef T type;
+    };
 
-// Simple image wrapper
-template<typename T>
-struct Image {
-    inline Image()
-        : pitch(0), ptr(0), w(0), h(0)
-    {
-    }
+    template <class T>
+    struct enable_if_c<false, T> {};
 
-    inline Image(size_t w, size_t h, size_t pitch, unsigned char* ptr)
-        : pitch(pitch), ptr(ptr), w(w), h(h)
-    {
-    }
-    
-    void Dealloc()
-    {
-        if(ptr) {
-            delete[] ptr;
-            ptr = NULL;
-        }
-    }
-    
-    void Alloc(size_t w, size_t h, size_t pitch)
-    {
-        Dealloc();
-        this->w = w;
-        this->h = h;
-        this->pitch = pitch;
-        this->ptr = new T[h*pitch];
-    }
-
-    size_t pitch;
-    T* ptr;
-    size_t w;
-    size_t h;
-};
-
+    template <class Cond, class T = void>
+    struct enable_if : public enable_if_c<Cond::value, T> {};
 }
 
-#endif // PANGOLIN_IMAGE_H
+#endif // PANGOLIN_COMPAT_TYPE_TRAITS_H

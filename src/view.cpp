@@ -270,7 +270,7 @@ void View::ResizeChildren()
 
 void View::Render()
 {
-    if(!extern_draw_function.empty() && show) {
+    if(extern_draw_function && show) {
         extern_draw_function(*this);
     }
     RenderChildren();
@@ -532,7 +532,7 @@ View& View::SetHandler(Handler* h)
     return *this;
 }
 
-View& View::SetDrawFunction(const boost::function<void(View&)>& drawFunc)
+View& View::SetDrawFunction(const boostd::function<void(View&)>& drawFunc)
 {
     extern_draw_function = drawFunc;
     return *this;

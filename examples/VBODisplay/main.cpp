@@ -4,6 +4,7 @@
 
 #include <pangolin/glcuda.h>
 #include <pangolin/pangolin.h>
+#include <pangolin/glvbo.h>
 
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
@@ -32,23 +33,17 @@ int main( int /*argc*/, char* argv[] )
 
   pangolin::CreateWindowAndBind("Main",640,480);
   glewInit();
-
-  printf("Vendor: %s\n", glGetString (GL_VENDOR));
-  printf("Renderer: %s\n", glGetString (GL_RENDERER));
-  printf("OpenGL Version: %s\n", glGetString (GL_VERSION));
-  printf("GLSL: %s\n", glGetString (GL_SHADING_LANGUAGE_VERSION));
-
   
   // 3D Mouse handler requires depth testing to be enabled  
   glEnable(GL_DEPTH_TEST);  
 
   // Create vertex and colour buffer objects and register them with CUDA
   GlBufferCudaPtr vertex_array(
-      GlArrayBuffer, mesh_width*mesh_height*sizeof(float4),
+      GlArrayBuffer, mesh_width*mesh_height, GL_FLOAT, 4,
       cudaGraphicsMapFlagsWriteDiscard, GL_STREAM_DRAW
   );
   GlBufferCudaPtr colour_array(
-      GlArrayBuffer, mesh_width*mesh_height*sizeof(uchar4),
+      GlArrayBuffer, mesh_width*mesh_height, GL_UNSIGNED_BYTE, 4,
       cudaGraphicsMapFlagsWriteDiscard, GL_STREAM_DRAW
   );
 
@@ -99,28 +94,14 @@ int main( int /*argc*/, char* argv[] )
       time += delta;
     }
 
-    vertex_array.Bind();
-    glVertexPointer(4, GL_FLOAT, 0, 0);
-    vertex_array.Unbind();
-
-    colour_array.Bind();
-    glColorPointer(4, GL_UNSIGNED_BYTE, 0, 0);
-    colour_array.Unbind();
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-
-    glDrawArrays(GL_POINTS, 0, mesh_width * mesh_height);
-
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
+    pangolin::RenderVboCbo(vertex_array, colour_array);
 
     // Render our UI panel when we receive input
     if(!(frame%100))
     {
 #ifdef USE_CUTIL
       fps = 1000.0 / cutGetAverageTimerValue(timer);
-      cutResetTimer(tim er);
+      cutResetTimer(timer);
 #endif
     }
 

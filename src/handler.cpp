@@ -127,7 +127,7 @@ void Handler2D::Mouse(View& display, MouseButton button, int x, int y, bool pres
     else
         in_view = false;
 
-    this->button = (MouseButton)(1 << button);
+    this->button = button;
     this->pressed = pressed;
 
     last_pos[0] = x;

@@ -30,26 +30,40 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/replace.hpp>
 
 using namespace std;
 
 namespace pangolin
 {
 
-boost::ptr_unordered_map<string,_Var> vars;
-vector<NewVarCallback> new_var_callbacks;
-vector<GuiVarChangedCallback> gui_var_changed_callbacks;
+VarState::VarState()
+{
+    // Nothing to do
+}
+
+VarState::~VarState()
+{
+    // Deallocate vars
+    for( std::map<std::string,_Var*>::iterator i = vars.begin(); i != vars.end(); ++i)
+    {
+        delete i->second;
+    }
+    vars.clear();
+}
+
+VarState& VarState::I() {
+    static VarState singleton;
+    return singleton;
+}
 
 void RegisterNewVarCallback(NewVarCallbackFn callback, void* data, const std::string& filter)
 {
-    new_var_callbacks.push_back(NewVarCallback(filter,callback,data));
+    VarState::I().new_var_callbacks.push_back(NewVarCallback(filter,callback,data));
 }
 
 void RegisterGuiVarChangedCallback(GuiVarChangedCallbackFn callback, void* data, const std::string& filter)
 {
-    gui_var_changed_callbacks.push_back(GuiVarChangedCallback(filter,callback,data));
+    VarState::I().gui_var_changed_callbacks.push_back(GuiVarChangedCallback(filter,callback,data));
 }
 
 // Find the open brace preceeded by '$'
@@ -103,21 +117,19 @@ string ProcessVal(const string& val )
             const char* endbrace = MatchingEndBrace(brace);
             if( endbrace )
             {
-                boost::iterator_range<const char*> out(brace-1,endbrace+1);
-                boost::iterator_range<const char*> in(brace+1,endbrace);
-                string inexpand = ProcessVal( boost::copy_range<string>(in) );
+                string inexpand = ProcessVal( std::string(brace+1,endbrace) );
+
                 Var<string> var(inexpand,"#");
                 if( !((const string)var).compare("#"))
                 {
                     std::cerr << "Unabled to expand: [" << inexpand << "].\nMake sure it is defined and terminated with a semi-colon." << endl << endl;
                 }
                 ostringstream oss;
-                oss << boost::copy_range<string>(boost::iterator_range<const char*>(expanded.c_str(), brace-1));
+                oss << std::string(expanded.c_str(), brace-1);
                 oss << (const string)var;
-                oss << boost::copy_range<string>(boost::iterator_range<const char*>(endbrace+1, expanded.c_str() + expanded.length() ));
+                oss << std::string(endbrace+1, expanded.c_str() + expanded.length() );
+
                 expanded = oss.str();
-                //        expanded = replace_range_copy(expanded,out,(const string)var);
-                //        cout << copy_range<std::string>(in) << endl;
                 continue;
             }
         }
@@ -129,8 +141,8 @@ string ProcessVal(const string& val )
 
 void AddVar(const string& name, const string& val )
 {
-    boost::ptr_unordered_map<std::string,_Var>::iterator vi = vars.find(name);
-    const bool exists_already = vi != vars.end();
+    std::map<std::string,_Var*>::iterator vi = VarState::I().vars.find(name);
+    const bool exists_already = vi != VarState::I().vars.end();
     
     string full = ProcessVal(val);
     Var<string> var(name);
@@ -146,7 +158,7 @@ void AddVar(const string& name, const string& val )
 #ifdef ALIAS
 void AddAlias(const string& alias, const string& name)
 {
-    boost::ptr_unordered_map<std::string,_Var>::iterator vi = vars.find(name);
+    std::map<std::string,_Var*>::iterator vi = vars.find(name);
     
     if( vi != vars.end() )
     {
@@ -188,8 +200,8 @@ void ParseVarsFile(const string& filename)
                     string val;
                     getline(f,name,'=');
                     getline(f,val,';');
-                    boost::trim_if(name, boost::is_any_of(" \t\n\r"));
-                    boost::trim_if(val, boost::is_any_of(" \t\n\r"));
+                    name = Trim(name, " \t\n\r");
+                    val = Trim(val, " \t\n\r");
                     
                     if( name.size() >0 && val.size() > 0 )
                     {

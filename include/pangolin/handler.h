@@ -119,12 +119,23 @@ struct Handler2D : Handler
 
     bool IsInsideView() const { return in_view; }
     bool IsPressed() const { return pressed; }
+
+    bool IsLeftButtonClicked()
+    {
+        bool left_clicked = (button == MouseButtonLeft && pressed);
+
+        button = (MouseButton)0;
+
+        return left_clicked;
+    }
+
     GLint const* GetLastPos() const { return last_pos; }
 
 protected:
     MouseButton button;
+
     bool pressed;
-    bool in_view;
+    bool in_view;    
     GLint last_pos[2];
 };
 

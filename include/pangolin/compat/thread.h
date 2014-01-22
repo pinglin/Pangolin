@@ -1,7 +1,7 @@
 /* This file is part of the Pangolin Project.
  * http://github.com/stevenlovegrove/Pangolin
  *
- * Copyright (c) 2011 Steven Lovegrove
+ * Copyright (c) 2013 Steven Lovegrove
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -25,48 +25,17 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef PANGOLIN_IMAGE_H
-#define PANGOLIN_IMAGE_H
+#ifndef PANGOLIN_COMPAT_THREAD_H
+#define PANGOLIN_COMPAT_THREAD_H
 
-namespace pangolin
-{
+#include <pangolin/platform.h>
 
-// Simple image wrapper
-template<typename T>
-struct Image {
-    inline Image()
-        : pitch(0), ptr(0), w(0), h(0)
-    {
-    }
+#ifdef CPP11_NO_BOOST
+    #include <thread>
+#else
+    #include <boost/thread.hpp>
+#endif
 
-    inline Image(size_t w, size_t h, size_t pitch, unsigned char* ptr)
-        : pitch(pitch), ptr(ptr), w(w), h(h)
-    {
-    }
-    
-    void Dealloc()
-    {
-        if(ptr) {
-            delete[] ptr;
-            ptr = NULL;
-        }
-    }
-    
-    void Alloc(size_t w, size_t h, size_t pitch)
-    {
-        Dealloc();
-        this->w = w;
-        this->h = h;
-        this->pitch = pitch;
-        this->ptr = new T[h*pitch];
-    }
+#include <pangolin/compat/boostd.h>
 
-    size_t pitch;
-    T* ptr;
-    size_t w;
-    size_t h;
-};
-
-}
-
-#endif // PANGOLIN_IMAGE_H
+#endif // PANGOLIN_COMPAT_THREAD_H
