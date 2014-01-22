@@ -1,16 +1,6 @@
-#include <stdlib.h>
-#include <time.h>
-
-#include <iostream>
-#include <algorithm>
-
-#include <boost/thread/thread.hpp>
-
 #include <pangolin/pangolin.h>
-
 #include "bspline.h"
 
-using namespace cascade;
 using namespace pangolin;
 using namespace std;
 

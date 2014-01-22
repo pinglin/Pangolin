@@ -4,8 +4,6 @@
 #include <boost/array.hpp>
 #include <vector>
 
-namespace cascade {
-
 using namespace boost;
 using namespace std;
 
@@ -154,6 +152,4 @@ private:
 
 };
 
-} // namespace cascade {
-
-#endif // CASCADE_BSPLINE
+#endif // BSPLINE_H
