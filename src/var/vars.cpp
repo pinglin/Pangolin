@@ -25,7 +25,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <pangolin/vars.h>
+#include <pangolin/var/varextra.h>
+#include <pangolin/var/varstate.h>
+#include <pangolin/file_utils.h>
 
 #include <iostream>
 #include <fstream>
@@ -36,24 +38,20 @@ using namespace std;
 namespace pangolin
 {
 
-VarState::VarState()
-{
-    // Nothing to do
-}
-
-VarState::~VarState()
-{
-    // Deallocate vars
-    for( std::map<std::string,_Var*>::iterator i = vars.begin(); i != vars.end(); ++i)
-    {
-        delete i->second;
-    }
-    vars.clear();
-}
-
 VarState& VarState::I() {
     static VarState singleton;
     return singleton;
+}
+
+VarState::~VarState() {
+    Clear();
+}
+
+void VarState::Clear() {
+    for(VarStoreContainer::iterator i = vars.begin(); i != vars.end(); ++i) {
+        delete i->second;
+    }
+    vars.clear();
 }
 
 void RegisterNewVarCallback(NewVarCallbackFn callback, void* data, const std::string& filter)
@@ -117,18 +115,18 @@ string ProcessVal(const string& val )
             const char* endbrace = MatchingEndBrace(brace);
             if( endbrace )
             {
-                string inexpand = ProcessVal( std::string(brace+1,endbrace) );
-
-                Var<string> var(inexpand,"#");
-                if( !((const string)var).compare("#"))
-                {
-                    std::cerr << "Unabled to expand: [" << inexpand << "].\nMake sure it is defined and terminated with a semi-colon." << endl << endl;
-                }
                 ostringstream oss;
                 oss << std::string(expanded.c_str(), brace-1);
-                oss << (const string)var;
-                oss << std::string(endbrace+1, expanded.c_str() + expanded.length() );
 
+                const string inexpand = ProcessVal( std::string(brace+1,endbrace) );
+                if( VarState::I().Exists(inexpand) ) {
+                    oss << VarState::I()[inexpand]->str->Get();
+                }else{
+                    pango_print_error("Unabled to expand: [%s].\nMake sure it is defined and terminated with a semi-colon.\n", inexpand.c_str() );
+                    oss << "#";
+                }
+
+                oss << std::string(endbrace+1, expanded.c_str() + expanded.length() );
                 expanded = oss.str();
                 continue;
             }
@@ -139,20 +137,17 @@ string ProcessVal(const string& val )
     return expanded;
 }
 
-void AddVar(const string& name, const string& val )
+void AddVar(const std::string& name, const string& val )
 {
-    std::map<std::string,_Var*>::iterator vi = VarState::I().vars.find(name);
-    const bool exists_already = vi != VarState::I().vars.end();
-    
-    string full = ProcessVal(val);
-    Var<string> var(name);
-    var = full;
-    
-    // Mark as upgradable if unique
-    if(!exists_already)
-    {
-        var.var->generic = true;
+    const std::string full = ProcessVal(val);
+
+    VarValueGeneric*& v = VarState::I()[name];
+    if(!v) {
+        VarValue<std::string>* nv = new VarValue<std::string>(val);
+        InitialiseNewVarMetaGeneric<std::string>(*nv, name);
+        v = nv;
     }
+    v->str->Set(full);
 }
 
 #ifdef ALIAS
@@ -162,14 +157,13 @@ void AddAlias(const string& alias, const string& name)
     
     if( vi != vars.end() )
     {
-        //cout << "Adding Alias " << alias << " to " << name << endl;
         _Var * v = vi->second;
         vars[alias].create(v->val,v->val_default,v->type_name);
-        vars[alias].meta_friendly = alias;
+        vars[alias].Meta().friendly = alias;
         v->generic = false;
         vars[alias].generic = false;
     }else{
-        cout << "Variable " << name << " does not exist to alias." << endl;
+        pango_print_error("Variable %s does not exist to alias.\n", name);
     }
 }
 #endif

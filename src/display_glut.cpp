@@ -27,6 +27,7 @@
 
 #include <pangolin/platform.h>
 #include <pangolin/glinclude.h>
+#include <pangolin/glglut.h>
 #include <pangolin/display.h>
 #include <pangolin/display_glut.h>
 #include <pangolin/display_internal.h>
@@ -46,6 +47,7 @@ void TakeGlutCallbacks()
     glutKeyboardFunc(&process::Keyboard);
     glutKeyboardUpFunc(&process::KeyboardUp);
     glutReshapeFunc(&process::Resize);
+    glutDisplayFunc(&process::Display);
     glutMouseFunc(&process::Mouse);
     glutMotionFunc(&process::MouseMotion);
     glutPassiveMotionFunc(&process::PassiveMouseMotion);
@@ -96,13 +98,19 @@ void CreateGlutWindowAndBind(std::string window_title, int w, int h, unsigned in
     glutInitWindowSize(w,h);
     glutCreateWindow(window_title.c_str());
     BindToContext(window_title);
+
+#ifdef HAVE_GLEW
     glewInit();
+#endif
     
 #ifdef HAVE_FREEGLUT
     glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 #endif
-    
-    context->is_double_buffered = mode & GLUT_DOUBLE;
+
+    // TODO: Need to implement our own key-repeat mechanism
+    //glutIgnoreKeyRepeat(true);
+
+    context->is_double_buffered = (mode & GLUT_DOUBLE) != 0;
     TakeGlutCallbacks();
     
     PangolinCommonInit();
@@ -126,6 +134,7 @@ void FinishGlutFrame()
     RenderViews();
     PostRender();
     SwapGlutBuffersProcessGlutEvents();
+    context->quit |= !glutGetWindow();
 }
 
 // Implement platform agnostic version

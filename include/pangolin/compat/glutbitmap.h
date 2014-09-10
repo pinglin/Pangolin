@@ -27,8 +27,10 @@
 
 #ifndef PANGOLIN_COMPAT_GLUT_BITMAP_H
 #define PANGOLIN_COMPAT_GLUT_BITMAP_H
-#ifndef HAVE_GLUT
 
+#include <pangolin/glglut.h>
+
+#ifndef HAVE_GLUT
 #include <pangolin/glfont.h>
 
 #ifdef HAVE_GLES
@@ -41,11 +43,16 @@ inline void glRasterPos3f(GLfloat x, GLfloat y, GLfloat z)
     GLdouble modelview[16];
     GLint    view[4];
     
+#ifdef HAVE_GLES_2
+    std::copy(pangolin::glEngine().projection.top().m, pangolin::glEngine().projection.top().m+16, projection);
+    std::copy(pangolin::glEngine().modelview.top().m, pangolin::glEngine().modelview.top().m+16, modelview);
+#else
     glGetDoublev(GL_PROJECTION_MATRIX, projection );
     glGetDoublev(GL_MODELVIEW_MATRIX, modelview );
+#endif
     glGetIntegerv(GL_VIEWPORT, view );
     
-    gluProject(x, y, z, modelview, projection, view,
+    pangolin::glProject(x, y, z, modelview, projection, view,
         g_raster_pos, g_raster_pos + 1, g_raster_pos + 2);
 }
 
@@ -88,4 +95,5 @@ inline int glutBitmapLength(void *font, const unsigned char *str)
 #define GLUT_BITMAP_HELVETICA_12 0;
 
 #endif // HAVE_GLUT
+
 #endif // PANGOLIN_COMPAT_GLUT_BITMAP_H
