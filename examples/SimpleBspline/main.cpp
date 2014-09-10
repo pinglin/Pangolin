@@ -1,168 +1,177 @@
+#include <stdlib.h>
+#include <time.h>
+
+#include <iostream>
+#include <algorithm>
+
 #include <pangolin/pangolin.h>
+
 #include "bspline.h"
 
 using namespace pangolin;
 using namespace std;
 
-uint8_t bg_colour = 255;
-size_t LOD = 200;
+////////////////////////////////////////////////////////////////////////////
+//  Constant colours
+////////////////////////////////////////////////////////////////////////////
+float colour_roi[3] = {1.0, 0.0, 0.0};
+float colour_knot_pt[3] = {1.0, 0.0, 0.0};
+float colour_ctrl_pt[3] = {0.0, 1.0, 1.0};
+float colour_spline[3] = {1.0, 1.0, 1.0};
 
-void DrawBsplineCtrlPt(Image<uint8_t>& img, Bspline<Cubic,double,2> const& bspline)
+////////////////////////////////////////////////////////////////////////////
+//  Pangolin UI
+////////////////////////////////////////////////////////////////////////////
+Var<int>* LOD; // Level of details, i.e., sampling numbers for B-spline
+Var<bool>* check_knot_mode;
+Var<bool>* button_open_bspline;
+Var<bool>* button_closed_bspline;
+Var<bool>* button_reset;
+Var<bool>* button_save_canvas;
+
+////////////////////////////////////////////////////////////////////////////
+//  Global functions
+////////////////////////////////////////////////////////////////////////////
+void draw_spline(Bspline<float,2> const& bspline)
 {
 
-    int const r = 2;
-
-    for(int i = 0; i < bspline.GetNumCtrlPoints(); ++i)
+    for(int pt_idx = -1, seg_idx = 0; seg_idx < bspline.get_num_ctrl_pts()+1; ++pt_idx, ++seg_idx)
     {
-
-        boost::array<double,2> ctrl_pt = bspline.GetCtrlPoint(i);
-        size_t const x = ctrl_pt[0];
-        size_t const y = ctrl_pt[1];
-
-        for(int dx = -r; dx <= r; ++dx)
-            for(int dy = -r; dy <= r; ++dy)
-            {
-                if(dx*dx+dy*dy <= (r+0.5)*(r+0.5))
-                {
-                    int w_x = x+dx; int w_y = y+dy;
-                    if(w_x >= 0 && w_x < img.w && w_y >= 0 && w_y < img.h)
-                    {
-                        img.ptr[(w_y*img.w+w_x)*4] = 255;
-                        img.ptr[(w_y*img.w+w_x)*4+1] = 0;
-                        img.ptr[(w_y*img.w+w_x)*4+2] = 0;
-                        img.ptr[(w_y*img.w+w_x)*4+3] = 255;
-                    }
-                }
-            }
-    }
-
-}
-
-void DrawBspline(Image<uint8_t>& img, Bspline<Cubic,double,2> const& bspline, double const LOD)
-{
-
-    for(int pt_idx = -1, seg_idx = 0; seg_idx != bspline.GetNumCtrlPoints()+1; ++pt_idx, ++seg_idx)
-    {
-        for(int d = 0; d < LOD; ++d)
+        for(int d = 0; d < *LOD; ++d)
         {
-            double t = d/double(LOD-1);
+            array<float,2> pt1 = bspline.cubic_intplt(pt_idx, d/float(*LOD));
+            array<float,2> pt2 = bspline.cubic_intplt(pt_idx, (d+1)/float(*LOD));
 
-            boost::array<double,2> pt = bspline.Interpolate(pt_idx, t);
-            int const x = round(pt[0]);
-            int const y = round(pt[1]);
-
-            if(x >= 0 && x < img.w && y >= 0 && y < img.h)
-            {
-                img.ptr[(y*img.w+x)*4] = 0;
-                img.ptr[(y*img.w+x)*4+1] = 0;
-                img.ptr[(y*img.w+x)*4+2] = 255;
-                img.ptr[(y*img.w+x)*4+3] = 255;
-            }
+            glColor3fv(colour_spline);
+            glBegin(GL_LINES);
+            glVertex2f(pt1[0], pt1[1]);
+            glVertex2f(pt2[0], pt2[1]);
+            glEnd();
         }
     }
-
 }
 
-int main( int /*argc*/, char* argv[] )
+void draw_knot_pts(Bspline<float,2> const& bspline)
+{
+    for(int k = 0; k < bspline.get_num_knot_pts(); ++k)
+    {
+        array<float,2> const& pt = bspline.get_knot_pt(k);
+
+        glColor3fv(colour_knot_pt);
+        glPointSize(5);
+        glBegin(GL_POINTS);
+        glVertex2f(pt[0], pt[1]);
+        glEnd();
+    }
+}
+
+void draw_ctrl_pts(Bspline<float,2> const& bspline)
+{
+    for(int k = 0; k < bspline.get_num_ctrl_pts(); ++k)
+    {
+        array<float,2> const& pt = bspline.get_ctrl_pt(k);
+
+        glColor3fv(colour_ctrl_pt);
+        glPointSize(5);
+        glBegin(GL_POINTS);
+        glVertex2f(pt[0], pt[1]);
+        glEnd();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+//  Main function
+////////////////////////////////////////////////////////////////////////////
+int main(int argc, char* argv[])
 {
 
     size_t const img_w = 640;
     size_t const img_h = 480;
 
-    const int UI_WIDTH = 180;
+    const int ui_width = 180;
 
     // Create OpenGL window in single line thanks to GLUT
-    pangolin::CreateWindowAndBind("Main",UI_WIDTH+img_w, img_h);
+    pangolin::CreateWindowAndBind("B-spline Canvas", ui_width+img_w, img_h);
 
     // 3D Mouse handler requires depth testing to be enabled
     glEnable(GL_DEPTH_TEST);
 
     // Issue specific OpenGl we might need
+    glEnable(GL_POINT_SMOOTH);
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(0.0, 0.0, 0.0, 1.0);
 
     // Add named OpenGL viewport to window and provide 3D Handler
     View& canvas_view = pangolin::CreateDisplay()
-                        .SetBounds(0.0, 1.0, Attach::Pix(UI_WIDTH), 1.0, -640.0f/480.0f)
+                        .SetBounds(0.0, 1.0, Attach::Pix(ui_width), 1.0, -640.0f/480.0f)
                         .SetHandler(new Handler2D);
 
     // Add named Panel and bind to variables beginning 'ui'
     // A Panel is just a View with a default layout and input handling
     pangolin::CreatePanel("ui")
-            .SetBounds(0.0, 1.0, 0.0, Attach::Pix(UI_WIDTH));
+            .SetBounds(0.0, 1.0, 0.0, Attach::Pix(ui_width));
 
-    Var<bool> open_bspline_button("ui.Open B-spline", false, false);
-    Var<bool> closed_bspline_button("ui.Closed B-spline", false, false);
+    LOD = new Var<int>("ui.Level of Details", 10, 1, 50);
+    check_knot_mode = new Var<bool>("ui.Assign Knots", true, true, false);
+    button_open_bspline = new Var<bool>("ui.Open B-spline", false, false);
+    button_closed_bspline = new Var<bool>("ui.Closed B-spline", false, false);
+    button_reset = new Var<bool>("ui.Reset", false, false);
+    button_save_canvas = new Var<bool>("ui.Save Canvas", false, false);
 
-    Var<bool> reset("ui.Reset", false, false);
-    Var<bool> save_canvas("ui.Save Canvas", false, false);
+    Bspline<float,2> bspline;
 
-    Image<uint8_t> img;
-    img.Alloc(img_w, img_h, 4*sizeof(unsigned char)*img_w);
-    std::fill(img.ptr, img.ptr+img.h*img.pitch, bg_colour);
-
-    Bspline<Cubic,double,2> bspline;    
-
-    GlTexture* canvas = new GlTexture(img_w,img_h);
-    canvas->Upload(img.ptr, GL_RGBA, GL_UNSIGNED_BYTE);
-
-    // Default hooks for exiting (Esc) and fullscreen (tab).
-    while( !pangolin::ShouldQuit() )
+    while(!pangolin::ShouldQuit())
     {
         // Clear entire screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        if(Pushed(*button_open_bspline))
+            bspline.set_bspline_type(Bspline<float,2>::OPEN);
 
-        if(Pushed(open_bspline_button))
-            bspline.SetBsplineType(OPEN);
+        if(Pushed(*button_closed_bspline))
+            bspline.set_bspline_type(Bspline<float,2>::CLOSED);
 
-        if(Pushed(closed_bspline_button))
-            bspline.SetBsplineType(CLOSED);
-
-        if(Pushed(reset))
-        {
-            bspline.ClearCtrlPoints();
-            std::fill(img.ptr, img.ptr+img.h*img.pitch, bg_colour);
-            canvas->Upload(img.ptr, GL_RGBA, GL_UNSIGNED_BYTE);
-        }
+        if(Pushed(*button_reset))
+            bspline.clear();
 
         if(((Handler2D*)canvas_view.handler)->IsLeftButtonClicked())
         {
-            std::fill(img.ptr, img.ptr+img.h*img.pitch, bg_colour);
-
             size_t x = ((Handler2D*)canvas_view.handler)->GetLastPos()[0] - canvas_view.vp.l;
             size_t y = ((Handler2D*)canvas_view.handler)->GetLastPos()[1] - canvas_view.vp.b;
 
-            double pt[2] = {x, y};
-            bspline.AddCtrlPoint(pt);
+            array<float,2> pt = {(float)x, (float)y};
+            if(*check_knot_mode)
+            {
+                bspline.add_knot_pt(pt);
 
-            cout << "Add control points: (" << x << "," << y << ")" << endl;
-            cout << "Number of control points: " << bspline.GetNumCtrlPts() << endl;
+                cout << "Add node points: (" << x << "," << y << ")" << endl;
+                cout << "Number of node points: " << bspline.get_num_knot_pts() << endl;
 
-            /* Draw B-Spline */
-            DrawBsplineCtrlPt(img, bspline);
+            }
+            else
+            {
+                bspline.add_ctrl_pt(pt);
 
-            if(bspline.GetNumCtrlPts() >= 4)
-                DrawBspline(img, bspline, LOD);
-
-            canvas->Upload(img.ptr, GL_RGBA, GL_UNSIGNED_BYTE);
-
+                cout << "Add control points: (" << x << "," << y << ")" << endl;
+                cout << "Number of control points: " << bspline.get_num_ctrl_pts() << endl;
+            }
         }
 
         // Activate efficiently by object
-        canvas_view.ActivateAndScissor();
-        canvas->RenderToViewport();
+        canvas_view.ActivatePixelOrthographic();
 
-        if( Pushed(save_canvas) )
+        if( Pushed(*button_save_canvas) )
             canvas_view.SaveOnRender("canvas");
+
+        draw_knot_pts(bspline);
+        draw_ctrl_pts(bspline);
+        draw_spline(bspline);
 
         // Swap frames and Process Events
         pangolin::FinishFrame();
+
     }
-
-    img.Dealloc();
-
-    delete canvas;
 
     return 0;
 }
