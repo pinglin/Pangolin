@@ -2,7 +2,6 @@
 #define BSPLIN_H
 
 #include <vector>
-#include <array>
 
 #include <Eigen/Core>
 #include <Eigen/LU>
@@ -10,34 +9,30 @@
 using namespace std;
 using namespace Eigen;
 
-static Matrix4d CubicBsplineMatrix()
-{
-    Matrix4d C;
-    C << 1.0, 4.0, 1.0, 0.0, -3.0, 0.0, 3.0, 0.0, 3.0, -6.0, 3.0, 0.0, -1.0, 3.0, -3.0, 1.0;
-    return C / 6.0;
-}
-
 //! @brief B-Spline template
 template<typename _Tp,int dim>
 class Bspline
 {
+
 public:
     enum BsplinType {OPEN, CLOSED} type;
 
     Bspline() : type(OPEN)
     {
+        CubicBsplineMatrix << 1.0, 4.0, 1.0, 0.0, -3.0, 0.0, 3.0, 0.0, 3.0, -6.0, 3.0, 0.0, -1.0, 3.0, -3.0, 1.0;
+        CubicBsplineMatrix /= 6.0;
     }
 
     ~Bspline()
     {
-        knot_pts.clear();
-        ctrl_pts.clear();
+        knot_pts.conservativeResize(NoChange, 0);
+        ctrl_pts.conservativeResize(NoChange, 0);
     }
 
     void clear()
     {
-        ctrl_pts.clear();
-        knot_pts.clear();
+        knot_pts.conservativeResize(NoChange, 0);
+        ctrl_pts.conservativeResize(NoChange, 0);
     }
 
     bool is_ready()
@@ -45,63 +40,65 @@ public:
         return knot_pts.size() > 3;
     }
 
-    void add_knot_pt(array<_Tp,dim> const& pt)
+    void add_knot_pt(Matrix<_Tp,dim,1> const& pt)
     {
-        knot_pts.push_back(pt);
+        knot_pts.conservativeResize(NoChange, knot_pts.cols()+1);
+        knot_pts.rightCols(1) = pt;
         cvt_knot_to_ctrl_cubic();
     }
 
-    void add_knot_pts(vector<array<_Tp,dim> > const& pts)
+    void add_knot_pts(Matrix<_Tp,dim,Dynamic> const& pts)
     {
         knot_pts = pts;
         cvt_knot_to_ctrl_cubic();
     }
 
-    void add_ctrl_pt(array<_Tp,dim> const& pt)
+    void add_ctrl_pt(Matrix<_Tp,dim,1> const& pt)
     {
-        ctrl_pts.push_back(pt);
+        ctrl_pts.conservativeResize(NoChange, ctrl_pts.cols()+1);
+        ctrl_pts.rightCols(1) = pt;
         cvt_ctrl_to_knot_cubic();
     }
 
-    void add_ctrl_pts(vector<array<_Tp,dim> > const& pts)
+    void add_ctrl_pts(Matrix<_Tp,dim,Dynamic> const& pts)
     {
         ctrl_pts = pts;
         cvt_ctrl_to_knot_cubic();
     }
 
-    array<_Tp,dim> get_ctrl_pt(size_t const p_idx) const
+    Array<_Tp,dim,1> get_knot_pt(size_t const p_idx) const
     {
-        return ctrl_pts.at(p_idx);
+        return knot_pts.col(p_idx);
     }
 
-    array<_Tp,dim> get_ctrl_first_pt() const
+    Array<_Tp,dim,1> get_knot_first_pt() const
     {
-        return ctrl_pts.front();
+        return knot_pts.leftCols(1);
     }
 
-    array<_Tp,dim> get_ctrl_last_pt() const
+    Array<_Tp,dim,1> get_knot_last_pt() const
     {
-        return ctrl_pts.back();
+        return knot_pts.rightCols(1);
     }
 
-    array<_Tp,dim> get_knot_pt(size_t const p_idx) const
+    Matrix<_Tp,dim,1> get_ctrl_pt(size_t const p_idx) const
     {
-        return knot_pts.at(p_idx);
+        return ctrl_pts.col(p_idx);
     }
 
-    array<_Tp,dim> get_knot_first_pt() const
+    Array<_Tp,dim,1> get_ctrl_first_pt() const
     {
-        return knot_pts.front();
+        return ctrl_pts.leftCols(1);
     }
 
-    array<_Tp,dim> get_knot_last_pt() const
+    Array<_Tp,dim,1> get_ctrl_last_pt() const
     {
-        return knot_pts.back();
+        return ctrl_pts.rightCols(1);
     }
 
     size_t get_pt_idx(int const pt_idx) const
     {
-        size_t num_ctrl_pts = ctrl_pts.size();
+        size_t num_ctrl_pts = get_num_ctrl_pts();
 
         if(type == CLOSED)
         {
@@ -109,7 +106,7 @@ public:
             if(pt_idx < 0)
                 return num_ctrl_pts+pt_idx;
 
-            if(pt_idx >= ctrl_pts.size())
+            if(pt_idx >= num_ctrl_pts)
                 return pt_idx-num_ctrl_pts;
         }
         else
@@ -118,15 +115,15 @@ public:
             if(pt_idx < 0)
                 return 0;
 
-            if(pt_idx >= ctrl_pts.size())
+            if(pt_idx >= num_ctrl_pts)
                 return num_ctrl_pts-1;
         }
 
         return pt_idx;
     }
 
-    size_t get_num_knot_pts() const { return knot_pts.size(); }
-    size_t get_num_ctrl_pts() const { return ctrl_pts.size(); }
+    size_t get_num_knot_pts() const { return knot_pts.cols(); }
+    size_t get_num_ctrl_pts() const { return ctrl_pts.cols(); }
 
     void set_bspline_type(BsplinType const type)
     {
@@ -145,48 +142,48 @@ public:
         }
     }
 
-    array<_Tp,dim> cubic_intplt(int const pt_idx, _Tp const t, size_t const d_order = 0) const
+    Matrix<_Tp,dim,1> cubic_intplt(int const pt_idx, _Tp const t, size_t const d_order = 0) const
     {
 
-        if(ctrl_pts.size() < 4)
-            return array<_Tp,dim>();
+        if(get_num_ctrl_pts() < 4)
+            return Matrix<_Tp,dim,1>();
 
         if(t > 1.0 || t < 0)
         {
             cerr << "Knot is not normalised!" << endl;
-            return array<_Tp,dim>();
+            return Matrix<_Tp,dim,1>();
         }
 
         /* Basis function coefficients */
-        Vector4d B;
+        Matrix<_Tp,4,1> B;
         if(d_order == 0)
         {
-            Vector4d t_vec(1, t, t*t, t*t*t);
-            B = t_vec.transpose()*CubicBsplineMatrix();
+            Matrix<_Tp,4,1> t_vec(1, t, t*t, t*t*t);
+            B = t_vec.transpose()*CubicBsplineMatrix;
         }
         else if(d_order == 1)
         {
-            Vector4d t_vec(0, 1, 2*t, 3*t*t);
-            B = t_vec.transpose()*CubicBsplineMatrix();
+            Matrix<_Tp,4,1> t_vec(0, 1, 2*t, 3*t*t);
+            B = t_vec.transpose()*CubicBsplineMatrix;
         }
         else if(d_order == 2)
         {
-            Vector4d t_vec(0, 0, 2, 6*t);
-            B = t_vec.transpose()*CubicBsplineMatrix();
+            Matrix<_Tp,4,1> t_vec(0, 0, 2, 6*t);
+            B = t_vec.transpose()*CubicBsplineMatrix;
         }
         else if(d_order == 3)
         {
-            Vector4d t_vec(0, 0, 0, 6);
-            B = t_vec.transpose()*CubicBsplineMatrix();
+            Matrix<_Tp,4,1> t_vec(0, 0, 0, 6);
+            B = t_vec.transpose()*CubicBsplineMatrix;
         }
 
-        array<_Tp,dim> pt;
+        Matrix<_Tp,dim,1> pt;
         for(int i = 0; i < dim; ++i)
         {
-            pt[i] = ctrl_pts.at(get_pt_idx(pt_idx-1))[i]*B[0] +
-                    ctrl_pts.at(get_pt_idx(pt_idx))[i]*B[1] +
-                    ctrl_pts.at(get_pt_idx(pt_idx+1))[i]*B[2] +
-                    ctrl_pts.at(get_pt_idx(pt_idx+2))[i]*B[3];
+            pt[i] = ctrl_pts(i, get_pt_idx(pt_idx-1))*B[0] +
+                    ctrl_pts(i, get_pt_idx(pt_idx))*B[1] +
+                    ctrl_pts(i, get_pt_idx(pt_idx+1))*B[2] +
+                    ctrl_pts(i, get_pt_idx(pt_idx+2))*B[3];
         }
 
         return pt;
@@ -198,7 +195,7 @@ private:
         size_t num_ctrl_pts = get_num_ctrl_pts();
         if(num_ctrl_pts > 3)
         {
-            MatrixXd B = Eigen::MatrixXd::Zero(num_ctrl_pts, num_ctrl_pts);
+            Matrix<_Tp,Dynamic,Dynamic> B = Matrix<_Tp,Dynamic,Dynamic>::Zero(num_ctrl_pts, num_ctrl_pts);
 
             if(type == OPEN)
             {
@@ -223,23 +220,8 @@ private:
                 }
             }
 
-            knot_pts.clear();
+            knot_pts = (B*ctrl_pts.transpose()).transpose();
 
-            array<_Tp,dim> pts[num_ctrl_pts];
-            for(int d = 0; d < dim; ++d)
-            {
-                Eigen::VectorXd ctrl(num_ctrl_pts);
-                for(int c = 0; c < num_ctrl_pts; ++c)
-                    ctrl[c] = ctrl_pts[c][d];
-
-                Eigen::VectorXd knot = B*ctrl;
-
-                for(int k = 0; k < num_ctrl_pts; ++k)
-                    pts[k][d] = knot(k);
-            }
-
-            for(int c = 0; c < num_ctrl_pts; ++c)
-                knot_pts.push_back(pts[c]);
         }
     }
 
@@ -249,8 +231,8 @@ private:
         size_t num_knot_pts = get_num_knot_pts();
         if(num_knot_pts > 3)
         {
-            MatrixXd B = Eigen::MatrixXd::Zero(num_knot_pts, num_knot_pts);
-            MatrixXd inv_B = Eigen::MatrixXd::Zero(num_knot_pts, num_knot_pts);
+            Matrix<_Tp,Dynamic,Dynamic> B = Matrix<_Tp,Dynamic,Dynamic>::Zero(num_knot_pts, num_knot_pts);
+            Matrix<_Tp,Dynamic,Dynamic> inv_B;
 
             if(type == OPEN)
             {
@@ -279,32 +261,19 @@ private:
                 inv_B = B.inverse();
             }
 
-            ctrl_pts.clear();
-
-            array<_Tp,dim> pts[num_knot_pts];
-            for(int d = 0; d < dim; ++d)
-            {
-                Eigen::VectorXd knot(num_knot_pts);
-                for(int k = 0; k < num_knot_pts; ++k)
-                    knot[k] = knot_pts[k][d];
-
-                Eigen::VectorXd ctrl = inv_B*knot;
-
-                for(int k = 0; k < num_knot_pts; ++k)
-                    pts[k][d] = ctrl(k);
-            }
-
-            for(int k = 0; k < num_knot_pts; ++k)
-                ctrl_pts.push_back(pts[k]);
+            ctrl_pts = (inv_B*knot_pts.transpose()).transpose();
 
         }
     }
 
+    /* Cubic Bspline basis matrix */
+    Matrix<_Tp,4,4> CubicBsplineMatrix;
+
     /* Knot points */
-    vector<array<_Tp,dim> > knot_pts;
+    Matrix<_Tp,dim,Dynamic> knot_pts;
 
     /* Control points */
-    vector<array<_Tp,dim> > ctrl_pts;
+    Matrix<_Tp,dim,Dynamic> ctrl_pts;
 
 };
 

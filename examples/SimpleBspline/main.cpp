@@ -90,8 +90,8 @@ void draw_spline(Bspline<float,2> const& bspline)
     {
         for(int d = 0; d < *LOD; ++d)
         {
-            array<float,2> pt1 = bspline.cubic_intplt(pt_idx, d/float(*LOD));
-            array<float,2> pt2 = bspline.cubic_intplt(pt_idx, (d+1)/float(*LOD));
+            Array<float,2,1> pt1 = bspline.cubic_intplt(pt_idx, d/float(*LOD));
+            Array<float,2,1> pt2 = bspline.cubic_intplt(pt_idx, (d+1)/float(*LOD));
 
             glColor3fv(colour_spline);
             glBegin(GL_LINES);
@@ -106,7 +106,7 @@ void draw_knot_pts(Bspline<float,2> const& bspline)
 {
     for(int k = 0; k < bspline.get_num_knot_pts(); ++k)
     {
-        array<float,2> const& pt = bspline.get_knot_pt(k);
+        Array<float,2,1> const& pt = bspline.get_knot_pt(k);
 
         glColor3fv(colour_knot_pt);
         glPointSize(5);
@@ -120,7 +120,7 @@ void draw_ctrl_pts(Bspline<float,2> const& bspline)
 {
     for(int k = 0; k < bspline.get_num_ctrl_pts(); ++k)
     {
-        array<float,2> const& pt = bspline.get_ctrl_pt(k);
+        Array<float,2,1> const& pt = bspline.get_ctrl_pt(k);
 
         glColor3fv(colour_ctrl_pt);
         glPointSize(5);
@@ -191,7 +191,8 @@ int main(int argc, char* argv[])
             size_t x = ((Handler2D*)canvas_view.handler)->GetLastPos()[0] - canvas_view.vp.l;
             size_t y = ((Handler2D*)canvas_view.handler)->GetLastPos()[1] - canvas_view.vp.b;
 
-            array<float,2> pt = {(float)x, (float)y};
+            Array<float,2,1> pt;
+            pt << x, y;
             if(*check_knot_mode)
             {
                 bspline.add_knot_pt(pt);
