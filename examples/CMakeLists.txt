@@ -5,6 +5,7 @@ find_package(Oculus QUIET)
 
 # All examples depend on Pangolin GUI
 if(BUILD_PANGOLIN_GUI AND (FREEGLUT_FOUND OR GLUT_FOUND OR ANDROID) )
+	add_subdirectory(SimpleBspline)
     add_subdirectory(HelloPangolin)
     add_subdirectory(SimpleMultiDisplay)
     add_subdirectory(SimpleDisplayImage)
@@ -28,11 +29,9 @@ if(BUILD_PANGOLIN_GUI AND (FREEGLUT_FOUND OR GLUT_FOUND OR ANDROID) )
 #        add_subdirectory(SimpleOculus)
 #      endif()
 
-#      This sample fails on many platforms, so exclude it for now,
-#      until we can create a better cmake test for support.
 #      ## VBODisplay Sample requires CUDA
-#      if( CUDA_FOUND )
-#        add_subdirectory(VBODisplay)
-#      endif()
+	  if( CUDA_FOUND )
+		add_subdirectory(VBODisplay)
+	  endif()
     endif()
 endif()

@@ -20,6 +20,57 @@ float colour_ctrl_pt[3] = {0.0, 1.0, 1.0};
 float colour_spline[3] = {1.0, 1.0, 1.0};
 
 ////////////////////////////////////////////////////////////////////////////
+//  2D Handler for Pangolin view
+////////////////////////////////////////////////////////////////////////////
+struct Handler2D : Handler
+{
+
+    Handler2D() : in_view(false), pressed(false){}
+
+    void Mouse(View& view, MouseButton button, int x, int y, bool pressed, int button_state)
+    {
+
+        in_view = (x > view.vp.l && x < view.vp.r() && y > view.vp.b && y < view.vp.t()) ? true : false;
+
+        this->button = button;
+        this->pressed = pressed;
+
+        last_pos[0] = x;
+        last_pos[1] = y;
+    }
+
+    void MouseMotion(View& view, int x, int y, int button_state)
+    {
+        in_view = (x > view.vp.l && x < view.vp.r() && y > view.vp.b && y < view.vp.t()) ? true : false;
+
+        last_pos[0] = x;
+        last_pos[1] = y;
+    }
+
+    bool IsInsideView() const { return in_view; }
+    bool IsPressed() const { return pressed; }
+
+    bool IsLeftButtonClicked()
+    {
+        bool left_clicked = (button == MouseButtonLeft && pressed);
+
+        button = (MouseButton)0;
+
+        return left_clicked;
+    }
+
+    GLint const* GetLastPos() const { return last_pos; }
+
+protected:
+    MouseButton button;
+
+    bool pressed;
+    bool in_view;
+    GLint last_pos[2];
+};
+
+
+////////////////////////////////////////////////////////////////////////////
 //  Pangolin UI
 ////////////////////////////////////////////////////////////////////////////
 Var<int>* LOD; // Level of details, i.e., sampling numbers for B-spline

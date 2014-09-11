@@ -62,7 +62,7 @@ const static GLfloat colour_s2[4] = {0.6f, 0.6f, 0.6f, 1.0f};
 const static GLfloat colour_bg[4] = {0.9f, 0.9f, 0.9f, 1.0f};
 const static GLfloat colour_fg[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 const static GLfloat colour_tx[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-const static GLfloat colour_dn[4] = {1.0f, 0.7f, 0.7f, 1.0f};
+const static GLfloat colour_dn[4] = {0.4f, 0.8f, 1.0f, 1.0f};
 
 static void* font = GLUT_BITMAP_HELVETICA_12;
 static int text_height = 8; //glutBitmapHeight(font) * 0.7;
