@@ -9,6 +9,7 @@ find_package(CUDA QUIET)
 # This example could be made to work with C++11, but the kernel code must be
 # compiled without it.
 if(CUDA_FOUND)
+  set(CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
   cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
   cuda_add_executable(
