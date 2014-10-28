@@ -6,7 +6,7 @@
 
 #include <pangolin/pangolin.h>
 
-void SetGlFormat(GLint& glchannels, GLenum& glformat, const pangolin::VideoPixelFormat& fmt)
+void SetGLFormat(GLint& glchannels, GLenum& glformat, const pangolin::VideoPixelFormat& fmt)
 {
     switch( fmt.channels) {
     case 1: glchannels = GL_LUMINANCE; break;
@@ -38,7 +38,7 @@ void VideoSample(const std::string uri)
     // Work out appropriate GL channel and format options
     GLint glchannels;
     GLenum glformat;
-    SetGlFormat(glchannels, glformat, vid_fmt);
+    SetGLFormat(glchannels, glformat, vid_fmt);
     
     // Create OpenGL window
     pangolin::CreateWindowAndBind("Main",w,h);
@@ -57,6 +57,10 @@ void VideoSample(const std::string uri)
 
         if( video.GrabNext(img,true) ) {
             texVideo.Upload( img, glchannels, glformat );
+
+            for(int i = 0; i < 100; ++i)
+                std::cout << (int)img[i] << " ";
+
         }
 
         // Activate video viewport and render texture

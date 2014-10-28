@@ -30,6 +30,7 @@
 
 #include <pangolin/platform.h>
 #include <pangolin/glinclude.h>
+#include <pangolin/glglut.h>
 
 #include <string>
 
