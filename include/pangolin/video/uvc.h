@@ -32,6 +32,7 @@
 #include <pangolin/video.h>
 
 #include <libuvc/libuvc.h>
+#include <libuvc/libuvc_internal.h>
 
 namespace pangolin
 {
@@ -67,11 +68,16 @@ protected:
     std::vector<StreamInfo> streams;
     size_t size_bytes;
     
-    uvc_context* ctx_;
-    uvc_device*  dev_;
-    uvc_device_handle*  devh_;
+    uvc_error_t res_;
+
+    uvc_context_t* ctx_;
+    uvc_device_t*  dev_;
+
+    uvc_device_handle_t* devh_;
+
+    uvc_stream_handle_t* strmh_;
     uvc_stream_ctrl_t ctrl_;
-    uvc_frame_t* frame_;
+
 };
 
 }

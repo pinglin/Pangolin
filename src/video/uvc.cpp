@@ -6,22 +6,23 @@ namespace pangolin
 UvcVideo::UvcVideo()
     : ctx_(NULL),
       dev_(NULL),
-      devh_(NULL),
-      frame_(NULL)
+      devh_(NULL)
 {
-    uvc_init(&ctx_, NULL);
-    if(!ctx_) {
+    res_ = uvc_init(&ctx_, NULL);
+    if(res_ != UVC_SUCCESS) {
+        uvc_perror(res_, "uvc_init");
         throw VideoException("Unable to open UVC Context");
     }
-    
-    InitDevice(0x03e7,0x1811,NULL, 640*2, 480, 45);
+
+    InitDevice(0, 0, NULL, 640, 480, 30);
+
     Start();
 }
 
 UvcVideo::~UvcVideo()
 {
     DeinitDevice();
-    
+
 //    if (ctx_) {
 //        // Work out how to kill this properly
 //        uvc_exit(ctx_);
@@ -31,70 +32,65 @@ UvcVideo::~UvcVideo()
 
 void UvcVideo::InitDevice(int vid, int pid, const char* sn, int width, int height, int fps)
 {    
-    uvc_error_t find_err = uvc_find_device(ctx_, &dev_, vid, pid, sn );
-    if (find_err != UVC_SUCCESS) {
-        uvc_perror(find_err, "uvc_find_device");
+
+    res_ = uvc_find_device(ctx_, &dev_, vid, pid, sn );
+    if(res_ != UVC_SUCCESS) {
+        uvc_perror(res_, "uvc_find_device");
+        throw VideoException("Unable to find UVC Device");
+    }
+
+    res_ = uvc_open(dev_, &devh_);
+    if(res_ != UVC_SUCCESS) {
+        uvc_perror(res_, "uvc_open");
         throw VideoException("Unable to open UVC Device");
     }
-    if(!dev_) {
-        throw VideoException("Unable to open UVC Device - no pointer returned.");
-    }
-    
-    uvc_error_t open_err = uvc_open(dev_, &devh_);
-    if (open_err != UVC_SUCCESS) {
-        uvc_perror(open_err, "uvc_open");
-        uvc_unref_device(dev_);
-        throw VideoException("Unable to open device");
-    }
-    
-    uvc_error_t mode_err = uvc_get_stream_ctrl_format_size(
-                devh_, &ctrl_,
-                UVC_COLOR_FORMAT_GRAY8,
-                width, height,
-                fps);
-            
-    if (mode_err != UVC_SUCCESS) {
-        uvc_perror(mode_err, "uvc_get_stream_ctrl_format_size");
+
+    // Print out all avaliable configuration
+    uvc_print_diag(devh_, stderr);
+
+    res_ = uvc_get_stream_ctrl_format_size(devh_, &ctrl_, UVC_FRAME_FORMAT_UNCOMPRESSED, width, height, fps);
+    if(res_ != UVC_SUCCESS) {
+        uvc_perror(res_, "uvc_get_stream_ctrl_format_size");
         uvc_close(devh_);
         uvc_unref_device(dev_);
-        throw VideoException("Unable to device mode.");
+        throw VideoException("Unable to make the device mode.");
     }
     
-    const VideoPixelFormat pfmt = VideoFormatFromString("GRAY8");
+    uvc_print_stream_ctrl(&ctrl_, stderr);
+
+    // assume bgr format
+    const VideoPixelFormat pfmt = VideoFormatFromString("RGB24");
     const StreamInfo stream_info(pfmt, width, height, (width*pfmt.bpp)/8, 0);
     streams.push_back(stream_info);
+
+    size_bytes = width*height*3;
+
 }
 
 void UvcVideo::DeinitDevice()
 {
-    Stop();
-    
-    if (frame_) {
-        uvc_free_frame(frame_);
-        frame_ = 0;
-    }    
+    Stop();    
 }
 
 void UvcVideo::Start()
 {
-    uvc_error_t stream_err = uvc_start_iso_streaming(devh_, &ctrl_, NULL, this);
-    
-    if (stream_err != UVC_SUCCESS) {
-        uvc_perror(stream_err, "uvc_start_iso_streaming");
+
+    res_ = uvc_stream_open_ctrl(devh_, &strmh_, &ctrl_);
+    if(res_ != UVC_SUCCESS) {
+        uvc_perror(res_, "uvc_stream_open_ctrl");
         uvc_close(devh_);
         uvc_unref_device(dev_);
-        throw VideoException("Unable to start iso streaming.");
+        throw VideoException("Unable to open a new stream.");
     }
-    
-    if (frame_) {
-        uvc_free_frame(frame_);
+
+    res_ = uvc_stream_start(strmh_, NULL, NULL, 0);
+    if (res_ != UVC_SUCCESS) {
+        uvc_perror(res_, "uvc_stream_start");
+        uvc_close(devh_);
+        uvc_unref_device(dev_);
+        throw VideoException("Unable to start streaming.");
     }
-    
-    size_bytes = ctrl_.dwMaxVideoFrameSize;
-    frame_ = uvc_allocate_frame(size_bytes);
-    if(!frame_) {
-        throw VideoException("Unable to allocate frame.");
-    }
+
 }
 
 void UvcVideo::Stop()
@@ -114,23 +110,40 @@ const std::vector<StreamInfo>& UvcVideo::Streams() const
     return streams;
 }
 
-bool UvcVideo::GrabNext( unsigned char* image, bool wait )
+bool UvcVideo::GrabNext(unsigned char* image, bool wait)
 {
-    uvc_frame_t* frame = NULL;
-    uvc_error_t err = uvc_get_frame(devh_, &frame, 0);
-    
-    if(err!= UVC_SUCCESS) {
-        uvc_perror(err, "uvc_get_frame");
-        return false;
-    }else{
-        if(frame) {
-            memcpy(image, frame->data, frame->data_bytes );
-            return true;
-        }else{
-            std::cerr << "No data..." << std::endl;
-            return false;
-        }
+
+    uvc_frame_t* frame_ = NULL;
+    res_ = uvc_stream_get_frame(strmh_, &frame_, 0);
+    if (res_ != UVC_SUCCESS) {
+        uvc_perror(res_, "uvc_stream_get_frame");
+        uvc_close(devh_);
+        uvc_unref_device(dev_);
+        throw VideoException("Unable to get frame.");
     }
+
+    if(frame_) {
+
+        uvc_frame_t frame_rgb;
+
+        frame_rgb.data = image;
+        frame_rgb.data_bytes = streams[0].Width()*streams[0].Height()*3;
+
+        res_ = uvc_any2rgb(frame_, &frame_rgb);
+        if (res_ != UVC_SUCCESS) {
+            uvc_perror(res_, "uvc_any2rgb");
+            uvc_close(devh_);
+            uvc_unref_device(dev_);
+            throw VideoException("Unable to convert yuv422 to rgb.");
+        }
+
+        return true;
+
+    } else {
+        std::cerr << "No data..." << std::endl;
+        return false;
+    }
+
 }
 
 bool UvcVideo::GrabNewest( unsigned char* image, bool wait )

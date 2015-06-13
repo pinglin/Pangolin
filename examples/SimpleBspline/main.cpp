@@ -14,7 +14,6 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////
 //  Constant colours
 ////////////////////////////////////////////////////////////////////////////
-float colour_roi[3] = {1.0, 0.0, 0.0};
 float colour_knot_pt[3] = {1.0, 0.0, 0.0};
 float colour_ctrl_pt[3] = {0.0, 1.0, 1.0};
 float colour_spline[3] = {1.0, 1.0, 1.0};
@@ -86,12 +85,12 @@ Var<bool>* button_save_canvas;
 void draw_spline(Bspline<float,2> const& bspline)
 {
 
-    for(int pt_idx = -1, seg_idx = 0; seg_idx < bspline.get_num_ctrl_pts()+1; ++pt_idx, ++seg_idx)
+    for(int pt_idx = -1, seg_idx = 0; seg_idx < bspline.GetNumCtrlPts()+1; ++pt_idx, ++seg_idx)
     {
         for(int d = 0; d < *LOD; ++d)
         {
-            Array<float,2,1> pt1 = bspline.cubic_intplt(pt_idx, d/float(*LOD));
-            Array<float,2,1> pt2 = bspline.cubic_intplt(pt_idx, (d+1)/float(*LOD));
+            Array<float,2,1> pt1 = bspline.CubicIntplt(pt_idx, d/float(*LOD));
+            Array<float,2,1> pt2 = bspline.CubicIntplt(pt_idx, (d+1)/float(*LOD));
 
             glColor3fv(colour_spline);
             glBegin(GL_LINES);
@@ -104,9 +103,9 @@ void draw_spline(Bspline<float,2> const& bspline)
 
 void draw_knot_pts(Bspline<float,2> const& bspline)
 {
-    for(int k = 0; k < bspline.get_num_knot_pts(); ++k)
+    for(int k = 0; k < bspline.GetNumKnotPts(); ++k)
     {
-        Array<float,2,1> const& pt = bspline.get_knot_pt(k);
+        Array<float,2,1> const& pt = bspline.GetKnotPt(k);
 
         glColor3fv(colour_knot_pt);
         glPointSize(5);
@@ -118,9 +117,9 @@ void draw_knot_pts(Bspline<float,2> const& bspline)
 
 void draw_ctrl_pts(Bspline<float,2> const& bspline)
 {
-    for(int k = 0; k < bspline.get_num_ctrl_pts(); ++k)
+    for(int k = 0; k < bspline.GetNumCtrlPts(); ++k)
     {
-        Array<float,2,1> const& pt = bspline.get_ctrl_pt(k);
+        Array<float,2,1> const& pt = bspline.GetCtrlPt(k);
 
         glColor3fv(colour_ctrl_pt);
         glPointSize(5);
@@ -178,35 +177,35 @@ int main(int argc, char* argv[])
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if(Pushed(*button_open_bspline))
-            bspline.set_bspline_type(Bspline<float,2>::OPEN);
+            bspline.SetBsplineType(Bspline<float,2>::OPEN);
 
         if(Pushed(*button_closed_bspline))
-            bspline.set_bspline_type(Bspline<float,2>::CLOSED);
+            bspline.SetBsplineType(Bspline<float,2>::CLOSED);
 
         if(Pushed(*button_reset))
-            bspline.clear();
+            bspline.Reset();
 
         if(((Handler2D*)canvas_view.handler)->IsLeftButtonClicked())
         {
             size_t x = ((Handler2D*)canvas_view.handler)->GetLastPos()[0] - canvas_view.vp.l;
             size_t y = ((Handler2D*)canvas_view.handler)->GetLastPos()[1] - canvas_view.vp.b;
 
-            Array<float,2,1> pt;
+            Vector2f pt;
             pt << x, y;
             if(*check_knot_mode)
             {
-                bspline.add_knot_pt(pt);
+                bspline.AddBackKnotPt(pt);
 
                 cout << "Add node points: (" << x << "," << y << ")" << endl;
-                cout << "Number of node points: " << bspline.get_num_knot_pts() << endl;
+                cout << "Number of node points: " << bspline.GetNumKnotPts() << endl;
 
             }
             else
             {
-                bspline.add_ctrl_pt(pt);
+                bspline.AddBackCtrlPt(pt);
 
                 cout << "Add control points: (" << x << "," << y << ")" << endl;
-                cout << "Number of control points: " << bspline.get_num_ctrl_pts() << endl;
+                cout << "Number of control points: " << bspline.GetNumCtrlPts() << endl;
             }
         }
 
