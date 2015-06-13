@@ -33,7 +33,8 @@ namespace pangolin
 UvcVideo::UvcVideo(int vendor_id, int product_id, const char* sn, int device_id, int width, int height, int fps)
     : ctx_(NULL),
       dev_(NULL),
-      devh_(NULL)
+      devh_(NULL),
+      strm_(NULL)
 {
     uvc_init(&ctx_, NULL);
     if(!ctx_) {
@@ -132,22 +133,12 @@ void UvcVideo::InitDevice(int vid, int pid, const char* sn, int device_id, int w
                 UVC_FRAME_FORMAT_YUYV,
                 width, height,
                 fps);
-
-    //uvc_print_stream_ctrl(&ctrl_, stderr);
             
     if (mode_err != UVC_SUCCESS) {
         uvc_perror(mode_err, "uvc_get_stream_ctrl_format_size");
         uvc_close(devh_);
         uvc_unref_device(dev_);
         throw VideoException("Unable to set device mode.");
-    }
-
-    uvc_error_t strm_err = uvc_stream_open_ctrl(devh_, &strm_, &ctrl_);
-    if(strm_err != UVC_SUCCESS) {
-        uvc_perror(strm_err, "uvc_stream_open_ctrl");
-        uvc_close(devh_);
-        uvc_unref_device(dev_);
-        throw VideoException("Unable to open device stream.");
     }
 
     // default RGB24 format
@@ -165,8 +156,19 @@ void UvcVideo::DeinitDevice()
 
 void UvcVideo::Start()
 {
+
+    if(strm_ != NULL)
+        Stop();
+
+    uvc_error_t strm_err = uvc_stream_open_ctrl(devh_, &strm_, &ctrl_);
+    if(strm_err != UVC_SUCCESS) {
+        uvc_perror(strm_err, "uvc_stream_open_ctrl");
+        uvc_close(devh_);
+        uvc_unref_device(dev_);
+        throw VideoException("Unable to open device stream.");
+    }
+
     uvc_error_t stream_err = uvc_stream_start(strm_, NULL, this, 0);
-    
     if (stream_err != UVC_SUCCESS) {
         uvc_perror(stream_err, "uvc_stream_start");
         uvc_close(devh_);
@@ -197,7 +199,7 @@ bool UvcVideo::GrabNext( unsigned char* image, bool wait )
 {
     uvc_frame_t* frame = NULL;
     uvc_error_t err = uvc_stream_get_frame(strm_, &frame, 0);
-    
+
     if(err!= UVC_SUCCESS) {
         uvc_perror(err, "uvc_get_frame");
         return false;

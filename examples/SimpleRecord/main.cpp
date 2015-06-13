@@ -1,5 +1,22 @@
 #include <pangolin/pangolin.h>
 
+void SetGlFormat(GLint& glformat, GLenum& gltype, const pangolin::VideoPixelFormat& fmt)
+{
+    switch( fmt.channels) {
+    case 1: glformat = GL_LUMINANCE; break;
+    case 3: glformat = GL_RGB; break;
+    case 4: glformat = GL_RGBA; break;
+    default: throw std::runtime_error("Unable to display video format");
+    }
+
+    switch (fmt.channel_bits[0]) {
+    case 8: gltype = GL_UNSIGNED_BYTE; break;
+    case 16: gltype = GL_UNSIGNED_SHORT; break;
+    case 32: gltype = GL_FLOAT; break;
+    default: throw std::runtime_error("Unknown channel format");
+    }
+}
+
 void RecordSample(const std::string input_uri, const std::string record_uri)
 {
     // Setup Video Source
@@ -8,6 +25,11 @@ void RecordSample(const std::string input_uri, const std::string record_uri)
     const unsigned w = video.Width();
     const unsigned h = video.Height();
 
+    // Work out appropriate GL channel and format options
+    GLint glformat;
+    GLenum gltype;
+    SetGlFormat(glformat, gltype, vid_fmt);
+
     pangolin::VideoOutput recorder( record_uri );
     recorder.SetStreams(video.Streams());
 
@@ -15,10 +37,10 @@ void RecordSample(const std::string input_uri, const std::string record_uri)
     pangolin::CreateWindowAndBind("Main",w,h);
 
     // Create viewport for video with fixed aspect
-    pangolin::View vVideo((float)w/h);
+    pangolin::View& vVideo = pangolin::Display("Video").SetAspect((float)w/h);
 
     // OpenGl Texture for video frame
-    pangolin::GlTexture texVideo(w,h,GL_RGBA);
+    pangolin::GlTexture texVideo(w,h,glformat,false,0,glformat,gltype);
 
     // Allocate image buffer. The +1 is to give ffmpeg some alignment slack
     // swscale seems to have a bug which goes over the array by 1...
@@ -31,7 +53,7 @@ void RecordSample(const std::string input_uri, const std::string record_uri)
         if( video.GrabNext(img,true) )
         {
             // Upload to GPU as texture for display
-            texVideo.Upload(img, vid_fmt.channels==1 ? GL_LUMINANCE:GL_RGB, GL_UNSIGNED_BYTE);
+            texVideo.Upload( img, glformat, gltype );
 
             // Record video frame
             recorder.WriteStreams(img);
