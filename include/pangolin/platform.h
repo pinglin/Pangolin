@@ -30,12 +30,21 @@
 
 #include <pangolin/config.h>
 
+// Include portable printf-style format macros
+#define __STDC_FORMAT_MACROS
+
 #ifdef _GCC_
 #  define PANGOLIN_DEPRECATED __attribute__((deprecated))
 #elif defined _MSVC_
 #  define PANGOLIN_DEPRECATED __declspec(deprecated)
 #else
 #  define PANGOLIN_DEPRECATED
+#endif
+
+#if (__cplusplus > 199711L) || (_MSC_VER >= 1700)
+#  define PANGOLIN_OVERRIDE override
+#else
+#  define PANGOLIN_OVERRIDE
 #endif
 
 #ifdef _MSVC_

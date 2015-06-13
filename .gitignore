@@ -4,3 +4,5 @@ abuild
 ibuild
 debug
 CMakeLists.txt.user
+*.orig
+*.user.*

@@ -1,78 +1,83 @@
 #######################################################
 ## Library sources
 
-set( INCDIR "../include/pangolin")
+macro( append_glob list glob )
+    file(GLOB files ${glob})
+    set(${list} "${${list}};${files}")
+endmacro()
+
 
 ## Header only includes / core headers
-set(
-  HEADERS
-  ${INCDIR}/pangolin.h ${INCDIR}/platform.h
-  ${INCDIR}/simple_math.h ${INCDIR}/timer.h
-  ${INCDIR}/gl.h ${INCDIR}/glinclude.h ${INCDIR}/gl_es_compat.h
-  ${INCDIR}/gldraw.h ${INCDIR}/glvbo.h
-  ${INCDIR}/glcuda.h ${INCDIR}/cg.h ${INCDIR}/glsl.h
-  ${INCDIR}/image.h
-  ${INCDIR}/file_utils.h
+set( INCDIR "../include/pangolin" )
+set( HEADERS
+  ${INCDIR}/pangolin.h
+  ${INCDIR}/platform.h
 )
+append_glob(HEADERS ${INCDIR}/utils/*.h*)
+append_glob(HEADERS ${INCDIR}/image/*.h*)
+append_glob(HEADERS ${INCDIR}/log/*.h*)
 
-## Store list of source files
-set( SOURCES file_utils.cpp image_load.cpp video_common.cpp )
+### Store list of source files
+append_glob(SOURCES utils/*.cpp)
+append_glob(SOURCES image/*.cpp)
+append_glob(SOURCES log/*.cpp)
 
 #######################################################
 ## User build options
 
 option(BUILD_PANGOLIN_GUI "Build support for Pangolin GUI" ON)
 if(BUILD_PANGOLIN_GUI)
-  list(APPEND HEADERS
-    ${INCDIR}/display.h ${INCDIR}/display_internal.h 
-    ${INCDIR}/view.h ${INCDIR}/viewport.h
-    ${INCDIR}/handler.h ${INCDIR}/handler_enums.h
-    ${INCDIR}/handler_glbuffer.h
-    ${INCDIR}/opengl_render_state.h
-    ${INCDIR}/datalog.h
-    ${INCDIR}/glfont.h ${INCDIR}/glpangoglu.h
-  )
-  list(APPEND SOURCES
-    display.cpp view.cpp viewport.cpp
-    handler.cpp handler_glbuffer.cpp
-    opengl_render_state.cpp
-    datalog.cpp
-    glfont.cpp glpangoglu.cpp
-  )
+  append_glob(HEADERS ${INCDIR}/gl/*.h*)
+  append_glob(HEADERS ${INCDIR}/display/*.h*)
+  append_glob(HEADERS ${INCDIR}/handler/*.h*)
+
+  append_glob(SOURCES gl/*.cpp)
+  append_glob(SOURCES display/*.cpp)
+  append_glob(SOURCES handler/*.cpp)
+
   if(NOT HAVE_GLES OR HAVE_GLES_2)
-    list(APPEND HEADERS ${INCDIR}/plotter.h)
-    list(APPEND SOURCES plotter.cpp)
+    append_glob(HEADERS ${INCDIR}/plot/*.h*)
+    append_glob(SOURCES plot/*.cpp)
   endif()
 endif()
 
 option(BUILD_PANGOLIN_VARS "Build support for Pangolin Vars" ON)
 if(BUILD_PANGOLIN_VARS)
-  list(APPEND HEADERS ${INCDIR}/var/var.h ${INCDIR}/var/varextra.h
-    ${INCDIR}/var/varstate.h ${INCDIR}/var/varvalue.h
-    ${INCDIR}/var/varvaluegeneric.h ${INCDIR}/var/varvaluet.h
-    ${INCDIR}/var/varwrapper.h ${INCDIR}/input_record_repeat.h
-  )
-  list(APPEND SOURCES var/vars.cpp input_record_repeat.cpp )
+  append_glob(HEADERS ${INCDIR}/var/*.h*)
+  append_glob(SOURCES var/*.cpp)
 
   if(BUILD_PANGOLIN_GUI)
-      list(APPEND HEADERS ${INCDIR}/widgets.h )
-      list(APPEND SOURCES widgets.cpp )
+      list(APPEND HEADERS ${INCDIR}/display/widgets/widgets.h )
+      list(APPEND SOURCES display/widgets/widgets.cpp )
   endif()
 endif()
 
 option(BUILD_PANGOLIN_VIDEO "Build support for Pangolin Video Utilities" ON)
 if(BUILD_PANGOLIN_VIDEO)
+  # Generic video includes
+  append_glob(HEADERS ${INCDIR}/video/*.h*)
+  append_glob(SOURCES video/*.cpp)
+
+  # Generic video drivers
   list(APPEND HEADERS
-    ${INCDIR}/threadedfilebuf.h ${INCDIR}/video.h ${INCDIR}/video_common.h
-    ${INCDIR}/video_splitter.h ${INCDIR}/video_output.h
-    ${INCDIR}/video_recorder.h ${INCDIR}/video_record_repeat.h
-    ${INCDIR}/video/pvn_video.h
-    ${INCDIR}/video/test.h ${INCDIR}/video/images.h
+    ${INCDIR}/video/drivers/test.h
+    ${INCDIR}/video/drivers/images.h
+    ${INCDIR}/video/drivers/video_splitter.h
+    ${INCDIR}/video/drivers/pvn_video.h
+    ${INCDIR}/video/drivers/pango_video.h
+    ${INCDIR}/video/drivers/pango_video_output.h
+    ${INCDIR}/video/drivers/debayer.h
+    ${INCDIR}/video/drivers/join.h
   )
   list(APPEND SOURCES
-    threadedfilebuf.cpp video.cpp video_splitter.cpp video_output.cpp
-    video_recorder.cpp video_record_repeat.cpp video/pvn_video.cpp
-    video/test.cpp video/images.cpp
+    video/drivers/test.cpp
+    video/drivers/images.cpp
+    video/drivers/video_splitter.cpp
+    video/drivers/pvn_video.cpp
+    video/drivers/pango_video.cpp
+    video/drivers/pango_video_output.cpp
+    video/drivers/debayer.cpp
+    video/drivers/join.cpp
   )
 endif()
 
@@ -87,23 +92,13 @@ if(NOT CPP11_NO_BOOST)
     find_package(Boost COMPONENTS thread filesystem system REQUIRED QUIET)
     list(APPEND USER_INC  "${Boost_INCLUDE_DIRS}" )
     list(APPEND LINK_LIBS "${Boost_LIBRARIES}" )
-
-    # Generic Image Library (GIL) should come with boost.
-    # If you have a version of boost without it, maybe figure out how to test here.
-    set(HAVE_BOOST_GIL 1)
-else()
-    find_package(Boost QUIET)
-    if(Boost_FOUND)
-        list(APPEND USER_INC "${Boost_INCLUDE_DIRS}" )
-        set(HAVE_BOOST_GIL 1)
-    endif()
 endif()
 
 if(BUILD_PANGOLIN_GUI)
     if( ANDROID  )
         # Android specific display code
-        list(APPEND HEADERS ${INCDIR}/display_android.h )
-        list(APPEND SOURCES display_android.cpp )
+        list(APPEND HEADERS ${INCDIR}/display/device/display_android.h )
+        list(APPEND SOURCES display/device/display_android.cpp )
 
         if(HAVE_GLES_2)
             list(APPEND LINK_LIBS "-lEGL;-lGLESv2" )
@@ -153,62 +148,66 @@ else()
       add_definitions(-DCUDA_BUILD)
       message(STATUS "CUDA Found and Enabled")
     endif()
-    
-    find_package(FREEGLUT QUIET)
-    find_package(GLUT QUIET)
-    
-	if(_OSX_)
-	  INCLUDE(CheckCXXSourceRuns)
-	  set(CMAKE_REQUIRED_LIBRARIES ${GLUT_LIBRARY})
-	  CHECK_CXX_SOURCE_RUNS("#include <GLUT/glut.h>\n int main () {return glutGetProcAddress(\"glutScrollFunc\") ? 0 : -1;};" HAVE_MODIFIED_OSXGLUT)
-	  if(NOT HAVE_MODIFIED_OSXGLUT)
-			message(STATUS "Install modified osxglut for smooth scroll support / pinch / zoom.")
-			message(STATUS "(https://github.com/stevenlovegrove/osxglut)")
-	  endif()
-	endif()
-    
-    # Prefer OSX_MODIFIED_GLUT > FREEGLUT > GLUT
-    if(FREEGLUT_FOUND AND NOT HAVE_MODIFIED_OSXGLUT)
-      set(HAVE_FREEGLUT 1)
-	  list(APPEND USER_INC  ${FREEGLUT_INCLUDE_DIR} )
-	  list(APPEND LINK_LIBS ${FREEGLUT_LIBRARY} )
-    elseif(GLUT_FOUND)
-      list(APPEND USER_INC  ${GLUT_INCLUDE_DIR} )
-      list(APPEND LINK_LIBS ${GLUT_LIBRARY} )
-      if(_OSX_)
-        set(HAVE_APPLE_OPENGL_FRAMEWORK 1)
-        if(NOT HAVE_MODIFIED_OSXGLUT)
-            message(STATUS "Using Apple Framework GLUT.")
-            message(STATUS "Install Freeglut or modified osxglut for scroll support.")
+
+    if(BUILD_PANGOLIN_GUI)
+        find_package(FREEGLUT QUIET)
+        find_package(GLUT QUIET)
+
+        if(_OSX_)
+          INCLUDE(CheckCXXSourceRuns)
+          set(CMAKE_REQUIRED_LIBRARIES ${GLUT_LIBRARY})
+          CHECK_CXX_SOURCE_RUNS("#include <GLUT/glut.h>\n int main () {return glutGetProcAddress(\"glutScrollFunc\") ? 0 : -1;};" HAVE_MODIFIED_OSXGLUT)
+          if(NOT HAVE_MODIFIED_OSXGLUT)
+                message(STATUS "Install modified osxglut for smooth scroll support / pinch / zoom.")
+                message(STATUS "(https://github.com/stevenlovegrove/osxglut)")
+          endif()
         endif()
-      endif()
-    endif()
-    
-    if(FREEGLUT_FOUND OR GLUT_FOUND)
-        set(HAVE_GLUT 1)
-        list(APPEND HEADERS ${INCDIR}/display_glut.h )
-        list(APPEND SOURCES display_glut.cpp )
-        message(STATUS "Glut Found and Enabled")
+
+        # Prefer OSX_MODIFIED_GLUT > FREEGLUT > GLUT
+        if(FREEGLUT_FOUND AND NOT HAVE_MODIFIED_OSXGLUT)
+          set(HAVE_FREEGLUT 1)
+          list(APPEND USER_INC  ${FREEGLUT_INCLUDE_DIR} )
+          list(APPEND LINK_LIBS ${FREEGLUT_LIBRARY} )
+        elseif(GLUT_FOUND)
+          list(APPEND USER_INC  ${GLUT_INCLUDE_DIR} )
+          list(APPEND LINK_LIBS ${GLUT_LIBRARY} )
+          if(_OSX_)
+            set(HAVE_APPLE_OPENGL_FRAMEWORK 1)
+            if(NOT HAVE_MODIFIED_OSXGLUT)
+                message(STATUS "Using Apple Framework GLUT.")
+                message(STATUS "Install Freeglut or modified osxglut for scroll support.")
+            endif()
+          endif()
+        endif()
+
+        if(FREEGLUT_FOUND OR GLUT_FOUND)
+            set(HAVE_GLUT 1)
+            list(APPEND HEADERS ${INCDIR}/display/device/display_glut.h )
+            list(APPEND SOURCES display/device/display_glut.cpp )
+            message(STATUS "Glut Found and Enabled")
+        endif()
     endif()
 endif()
 
 find_package(CVARS 2.3 QUIET)
-if(CVARS_FOUND)
+if(BUILD_PANGOLIN_GUI AND CVARS_FOUND)
   set(HAVE_CVARS 1)
   list(APPEND USER_INC  ${CVARS_INCLUDE_DIR} )
   list(APPEND LINK_LIBS ${CVARS_LIBRARIES} )
   message(STATUS "CVARS Found and Enabled")
 endif()
 
-find_package(Oculus QUIET)
-if(Oculus_FOUND)
-  set(HAVE_OCULUS 1)
-# Uses old API
-#  list(APPEND HEADERS ${INCDIR}/hud/oculus_hud.h )
-#  list(APPEND SOURCES hud/oculus_hud.cpp )
-  list(APPEND USER_INC ${Oculus_INCLUDE_DIRS} )
-  list(APPEND LINK_LIBS ${Oculus_LIBRARIES} )
-  message(STATUS "Oculus Rift Found and Enabled")
+option(BUILD_PANGOLIN_OCULUS "Build support for Oculus HUD" OFF)
+if(BUILD_PANGOLIN_OCULUS)
+  find_package(Oculus QUIET)
+  if(Oculus_FOUND)
+    set(HAVE_OCULUS 1)
+    list(APPEND HEADERS ${INCDIR}/hud/oculus_hud.h )
+    list(APPEND SOURCES hud/oculus_hud.cpp )
+    list(APPEND USER_INC ${Oculus_INCLUDE_DIRS} )
+    list(APPEND LINK_LIBS ${Oculus_LIBRARIES} )
+    message(STATUS "Oculus Rift Found and Enabled")
+  endif()
 endif()
 
 find_package(Eigen3 QUIET)
@@ -230,15 +229,15 @@ if(BUILD_PANGOLIN_VIDEO AND DC1394_FOUND)
   set(HAVE_DC1394 1)
   list(APPEND INTERNAL_INC  ${DC1394_INCLUDE_DIR} )
   list(APPEND LINK_LIBS  ${DC1394_LIBRARY} )
-  list(APPEND HEADERS ${INCDIR}/video/firewire.h ${INCDIR}/video/firewire_deinterlace.h )
-  list(APPEND SOURCES video/firewire.cpp video/firewire_deinterlace.cpp)
+  list(APPEND HEADERS ${INCDIR}/video/drivers/firewire.h ${INCDIR}/video/drivers/firewire_deinterlace.h )
+  list(APPEND SOURCES video/drivers/firewire.cpp video/drivers/firewire_deinterlace.cpp)
   message(STATUS "libdc1394 Found and Enabled")
 endif()
 
 if(BUILD_PANGOLIN_VIDEO AND _LINUX_)
   set(HAVE_V4L 1)
-  list(APPEND HEADERS ${INCDIR}/video/v4l.h)
-  list(APPEND SOURCES video/v4l.cpp)
+  list(APPEND HEADERS ${INCDIR}/video/drivers/v4l.h)
+  list(APPEND SOURCES video/drivers/v4l.cpp)
   message(STATUS "V4L Found and Enabled")
 endif()
 
@@ -247,8 +246,8 @@ if(BUILD_PANGOLIN_VIDEO AND FFMPEG_FOUND)
   set(HAVE_FFMPEG 1)
   list(APPEND INTERNAL_INC  ${FFMPEG_INCLUDE_DIRS} )
   list(APPEND LINK_LIBS ${FFMPEG_LIBRARIES} )
-  list(APPEND HEADERS ${INCDIR}/video/ffmpeg.h)
-  list(APPEND SOURCES video/ffmpeg.cpp)
+  list(APPEND HEADERS ${INCDIR}/video/drivers/ffmpeg.h)
+  list(APPEND SOURCES video/drivers/ffmpeg.cpp)
   message(STATUS "ffmpeg Found and Enabled")
 endif()
 
@@ -257,18 +256,21 @@ if(BUILD_PANGOLIN_VIDEO AND OPENNI_FOUND)
   set(HAVE_OPENNI 1)
   list(APPEND INTERNAL_INC  ${OPENNI_INCLUDE_DIRS} )
   list(APPEND LINK_LIBS ${OPENNI_LIBRARIES} )
-  list(APPEND HEADERS ${INCDIR}/video/openni.h )
-  list(APPEND SOURCES video/openni.cpp)
+  list(APPEND HEADERS ${INCDIR}/video/drivers/openni.h )
+  list(APPEND SOURCES video/drivers/openni.cpp)
   message(STATUS "OpenNI Found and Enabled")
 endif()
 
 find_package(OpenNI2 QUIET)
 if(BUILD_PANGOLIN_VIDEO AND OPENNI2_FOUND)
   set(HAVE_OPENNI2 1)
+  if(_LINUX_)
+    add_definitions(-Dlinux=1)
+  endif()
   list(APPEND INTERNAL_INC  ${OPENNI2_INCLUDE_DIRS} )
   list(APPEND LINK_LIBS ${OPENNI2_LIBRARIES} )
-  list(APPEND HEADERS ${INCDIR}/video/openni2.h )
-  list(APPEND SOURCES video/openni2.cpp)
+  list(APPEND HEADERS ${INCDIR}/video/drivers/openni2.h )
+  list(APPEND SOURCES video/drivers/openni2.cpp)
   message(STATUS "OpenNI2 Found and Enabled")
 endif()
 
@@ -277,8 +279,15 @@ if(BUILD_PANGOLIN_VIDEO AND uvc_FOUND)
   set(HAVE_UVC 1)
   list(APPEND INTERNAL_INC  ${uvc_INCLUDE_DIRS} )
   list(APPEND LINK_LIBS ${uvc_LIBRARIES} )
-  list(APPEND HEADERS ${INCDIR}/video/uvc.h )
-  list(APPEND SOURCES video/uvc.cpp)
+  list(APPEND HEADERS ${INCDIR}/video/drivers/uvc.h )
+  list(APPEND SOURCES video/drivers/uvc.cpp)
+  if(_WIN_)
+    find_package(pthread REQUIRED QUIET)
+    list(APPEND LINK_LIBS ${pthread_LIBRARIES} )
+
+    find_package(libusb1 REQUIRED QUIET)
+    list(APPEND LINK_LIBS ${libusb1_LIBRARIES} )
+  endif()
   message(STATUS "libuvc Found and Enabled")
 endif()
 
@@ -287,8 +296,8 @@ if(BUILD_PANGOLIN_VIDEO AND DepthSense_FOUND)
   set(HAVE_DEPTHSENSE 1)
   list(APPEND INTERNAL_INC  ${DepthSense_INCLUDE_DIRS} )
   list(APPEND LINK_LIBS ${DepthSense_LIBRARIES} )
-  list(APPEND HEADERS ${INCDIR}/video/depthsense.h )
-  list(APPEND SOURCES video/depthsense.cpp)
+  list(APPEND HEADERS ${INCDIR}/video/drivers/depthsense.h )
+  list(APPEND SOURCES video/drivers/depthsense.cpp)
   message(STATUS "DepthSense Found and Enabled")
 endif()
 

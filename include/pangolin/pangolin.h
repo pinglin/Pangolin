@@ -31,33 +31,37 @@
 #include <pangolin/platform.h>
 
 #ifdef BUILD_PANGOLIN_GUI
-  #include <pangolin/gl.h>
-  #include <pangolin/gldraw.h>
-  #include <pangolin/glstate.h>
-  #include <pangolin/display.h>
-  #include <pangolin/view.h>
+  #include <pangolin/gl/gl.h>
+  #include <pangolin/gl/gldraw.h>
+  #include <pangolin/gl/glvbo.h>
+  #include <pangolin/gl/glstate.h>
+  #include <pangolin/gl/colour.h>
+  #include <pangolin/display/display.h>
+  #include <pangolin/display/view.h>
   #ifdef HAVE_GLUT
-    #include <pangolin/display_glut.h>
+    #include <pangolin/display/device/display_glut.h>
   #endif // HAVE_GLUT
   #ifdef _ANDROID_
-    #include <pangolin/display_android.h>
+    #include <pangolin/display/device/display_android.h>
   #endif
   #if !defined(HAVE_GLES) || defined(HAVE_GLES_2)
-    #include <pangolin/plotter.h>
+    #include <pangolin/plot/plotter.h>
   #endif
 #endif // BUILD_PANGOLIN_GUI
 
 #ifdef BUILD_PANGOLIN_VARS
   #include <pangolin/var/varextra.h>
   #ifdef BUILD_PANGOLIN_GUI
-    #include <pangolin/widgets.h>
+    #include <pangolin/display/widgets/widgets.h>
   #endif // BUILD_PANGOLIN_GUI
 #endif // BUILD_PANGOLIN_VARS
 
 #ifdef BUILD_PANGOLIN_VIDEO
-  #include <pangolin/video.h>
-  #include <pangolin/video_output.h>
+  #include <pangolin/video/video.h>
+  #include <pangolin/video/video_output.h>
 #endif // BUILD_PANGOLIN_VIDEO
+
+#include <pangolin/image/image_io.h>
 
 // Let other libraries headers know about Pangolin
 #define HAVE_PANGOLIN
