@@ -142,11 +142,11 @@ void UvcVideo::InitDevice(int vid, int pid, const char* sn, int device_id, int w
     }
 
     // default RGB24 format
-    const VideoPixelFormat pfmt = VideoFormatFromString("RGB24");
+    const VideoPixelFormat pfmt = VideoFormatFromString("YUYV422");
     const StreamInfo stream_info(pfmt, width, height, (width*pfmt.bpp)/8, 0);
     streams.push_back(stream_info);
 
-    size_bytes = width*height*3;
+    size_bytes = ctrl_.dwMaxVideoFrameSize;
 }
 
 void UvcVideo::DeinitDevice()
@@ -197,7 +197,7 @@ const std::vector<StreamInfo>& UvcVideo::Streams() const
 
 bool UvcVideo::GrabNext( unsigned char* image, bool wait )
 {
-    uvc_frame_t* frame = NULL;
+    uvc_frame_t* frame = NULL;  
     uvc_error_t err = uvc_stream_get_frame(strm_, &frame, 0);
 
     if(err!= UVC_SUCCESS) {
@@ -205,13 +205,7 @@ bool UvcVideo::GrabNext( unsigned char* image, bool wait )
         return false;
     }else{
         if(frame) {
-
-            uvc_frame_t frame_rgb;
-            frame_rgb.data = image;
-            frame_rgb.data_bytes = size_bytes;
-
-            err = uvc_any2rgb(frame, &frame_rgb);
-
+            memcpy(image, frame->data, frame->data_bytes);
             return true;
         }else{
             std::cerr << "No data..." << std::endl;
