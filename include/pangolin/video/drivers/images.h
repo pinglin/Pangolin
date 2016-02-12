@@ -39,7 +39,7 @@ namespace pangolin
 {
 
 // Video class that outputs test video signal.
-class PANGOLIN_EXPORT ImagesVideo : public VideoInterface
+class PANGOLIN_EXPORT ImagesVideo : public VideoInterface, public VideoPlaybackInterface
 {
 public:
     ImagesVideo(const std::string& wildcard_path);
@@ -47,24 +47,26 @@ public:
 
     ~ImagesVideo();
     
-    //! Implement VideoInput::Start()
-    void Start();
-    
-    //! Implement VideoInput::Stop()
-    void Stop();
+    // Implement VideoInterface
+    void Start() PANGOLIN_OVERRIDE;
+        
+    void Stop() PANGOLIN_OVERRIDE;
 
-    //! Implement VideoInput::SizeBytes()
-    size_t SizeBytes() const;
+    size_t SizeBytes() const PANGOLIN_OVERRIDE;
 
-    //! Implement VideoInput::Streams()
-    const std::vector<StreamInfo>& Streams() const;
+    const std::vector<StreamInfo>& Streams() const PANGOLIN_OVERRIDE;
     
-    //! Implement VideoInput::GrabNext()
-    bool GrabNext( unsigned char* image, bool wait = true );
+    bool GrabNext( unsigned char* image, bool wait = true ) PANGOLIN_OVERRIDE;
+        
+    bool GrabNewest( unsigned char* image, bool wait = true ) PANGOLIN_OVERRIDE;
     
-    //! Implement VideoInput::GrabNewest()
-    bool GrabNewest( unsigned char* image, bool wait = true );
-    
+    // Implement VideoPlaybackInterface
+    int GetCurrentFrameId() const PANGOLIN_OVERRIDE;
+
+    int GetTotalFrames() const PANGOLIN_OVERRIDE;
+
+    int Seek(int frameid) PANGOLIN_OVERRIDE;
+
 protected:
     typedef std::vector<TypedImage> Frame;
     

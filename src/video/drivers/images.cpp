@@ -177,4 +177,24 @@ bool ImagesVideo::GrabNewest( unsigned char* image, bool wait )
     return GrabNext(image,wait);
 }
 
+int ImagesVideo::GetCurrentFrameId() const
+{
+    return num_loaded;
+}
+
+int ImagesVideo::GetTotalFrames() const
+{
+    return num_files;
+}
+
+int ImagesVideo::Seek(int frame_id)
+{
+    if(frame_id < num_files) {
+        num_loaded = frame_id;
+        return frame_id;
+    }
+
+    return -1;
+}
+
 }
