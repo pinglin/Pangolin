@@ -189,9 +189,10 @@ int ImagesVideo::GetTotalFrames() const
 
 int ImagesVideo::Seek(int frame_id)
 {
-    if(frame_id < num_files) {
-        num_loaded = frame_id;
-        return frame_id;
+    if(frame_id-1 < num_files) {
+        num_loaded = frame_id-1 < 0 ? 0 : frame_id-1;
+        loaded.clear();
+        return num_loaded;
     }
 
     return -1;
